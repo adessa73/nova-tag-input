@@ -1,100 +1,43 @@
 <template>
-    <DefaultField :field="field" :errors="errors" :show-help-text="showHelpText">
-        <template #field>
-            <vue-tags-input
-                v-model="tag"
-                :tags="tags"
-                @tags-changed="tagsChanged"
-                :placeholder="field.placeholder"
-                :autocompleteItems="filteredItems"
-                :add-on-key="field.addOnKeys"
-                :separators="field.separators"
-                :add-from-paste="field.addFromPaste"
-                :add-on-blur="field.addOnBlur"
-                :add-only-from-autocomplete="field.addOnlyFromAutocomplete"
-                :allow-edit-tags="field.allowEditTags"
-                :autocomplete-always-open="field.autocompleteAlwaysOpen"
-                :autocomplete-filter-duplicates="field.autocompleteFilterDuplicates"
-                :autocomplete-min-length="field.autocompleteMinLength"
-                :avoid-adding-duplicates="field.avoidAddingDuplicates"
-                :delete-on-backspace="field.deleteOnBackspace"
-                :disabled="field.disabled"
-                :max-tags="field.maxTags"
-            />
-        </template>
-    </DefaultField>
+    <div v-html="fieldLabel"></div>
 </template>
 
 <script>
-import { FormField, HandlesValidationErrors } from 'laravel-nova'
-import VueTagsInput from '@sipec/vue3-tags-input';
+let vm;
 
 export default {
     data() {
         return {
-            tag: '',
-            tags: [],
-            autocompleteItems: [],
-            showHelpText: true,
+            tags: '',
+            fieldLabel: this.field.value || this.field.displayedAs || '—',
+            tagsWrapperClass: 'nti-tags-wrapper nti-tags-wrapper-index',
+            tagClass: 'nti-tag',
         }
     },
-    mixins: [FormField, HandlesValidationErrors],
-
-    props: ['resourceName', 'resourceId', 'field'],
-
+    props: ['resourceName', 'field'],
     mounted() {
-        // Set up default parameters
-        this.autocompleteItems = (this.field.autocompleteItems) ? this.field.autocompleteItems : this.autocompleteItems;
-    },
+        vm = this;
+        let items = this.fieldLabel;
 
-    methods: {
-        /*
-         * Set the initial, internal value for the field.
-         */
-        setInitialValue() {
-            this.value = this.field.value || '';
-            if (this.value !== '') {
-                let tags = [];
-                this.value.forEach(function (item, index) {
-                    // Check if the data needs conversion
-                    tags.push((typeof item === "object" && item.hasOwnProperty('text')) ? item : {'text': item});
-                });
-                // Store the tags array
-                this.tags = tags;
+        if (typeof items === 'string') {
+            // Se os itens são uma string, vamos tentar analisá-los como JSON
+            try {
+                items = JSON.parse(items);
+            } catch (e) {
+                // Em caso de erro na análise JSON, trate como uma string simples
+                items = [items];
             }
-        },
-
-        /**
-         * Fill the given FormData object with the field's internal value.
-         */
-        fill(formData) {
-            formData.append(this.field.attribute, JSON.stringify(this.tags) || '')
-        },
-
-        /**
-         * Update the field's internal value.
-         */
-        handleChange(value) {
-            this.value = value
-        },
-
-        /**
-         * Handles the tagChanged event
-         * @param newTags
-         */
-        tagsChanged(newTags) {
-            this.tags = newTags;
         }
-    },
 
-    computed: {
-        filteredItems() {
-            return this.autocompleteItems.filter(i => {
-                return i.text.toLowerCase().indexOf(this.tag.toLowerCase()) !== -1;
+        if (items instanceof Array && items.length) {
+            items.forEach(function (item, index) {
+                // Backward compatibility in case tags are stored as object
+                let label = (typeof item === "object" && item.hasOwnProperty('text')) ? item.text : item;
+                vm.tags += '<span class="' + vm.tagClass + '">' + label + '</span>';
             });
-        },
-    },
 
-    components: { VueTagsInput }
+            this.fieldLabel = '<div class="' + this.tagsWrapperClass + '">' + vm.tags + '</div>';
+        }
+    }
 }
 </script>
